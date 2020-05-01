@@ -18,7 +18,6 @@ import static org.springframework.util.CollectionUtils.isEmpty;
 @Repository
 public class CustomerRepository {
 
-    public static final String COLUMNS = "CUSTOMER_ID, DATE_OF_BIRTH, FORENAME, SURNAME";
     public static final String SAVE_SQL = "INSERT INTO CUSTOMER (CUSTOMER_ID, DATE_OF_BIRTH, FORENAME, SURNAME) VALUES (:customerId, :dateOfBirth, :forename, :surname)";
     public static final String SELECT_SQL = "SELECT c.CUSTOMER_ID, c.DATE_OF_BIRTH, c.FORENAME, c.SURNAME FROM CUSTOMER c";
 
