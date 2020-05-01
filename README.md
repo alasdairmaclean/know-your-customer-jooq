@@ -6,7 +6,7 @@ Know Your Customer
 * Requires Java 8+
 
 
-#How to run
+# How to run
 
 * `./gradlew build`
 
