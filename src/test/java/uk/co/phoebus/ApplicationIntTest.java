@@ -153,7 +153,7 @@ class ApplicationIntTest {
         assertEquals(customerAccountLink, createdLink);
 
         Customer otherCustomer = createCustomer(aDefaultCustomer());
-        Account otherAccount = createAccount(aDefaultAccount());
+        Account otherAccount = createAccount(aDefaultAccount().toBuilder().accountNumber(22222222).build());
 
         CustomerAccountLink otherCustomerAccountLink = CustomerAccountLink.builder()
                 .customerId(otherCustomer.getCustomerId())
@@ -224,7 +224,7 @@ class ApplicationIntTest {
         assertEquals(customerAccountLink, createdLink);
 
         Customer otherCustomer = createCustomer(aDefaultCustomer());
-        Account otherAccount = createAccount(aDefaultAccount());
+        Account otherAccount = createAccount(aDefaultAccount().toBuilder().accountNumber(22222222).build());
 
         CustomerAccountLink otherCustomerAccountLink = CustomerAccountLink.builder()
                 .customerId(otherCustomer.getCustomerId())
@@ -238,6 +238,15 @@ class ApplicationIntTest {
         List<Account> searchResults = searchAccounts(searchModel);
         assertEquals(1, searchResults.size());
         assertEquals(createdAccount.getAccountId(), searchResults.get(0).getAccountId());
+    }
+
+    @Test
+    public void account_duplicateAccountReturnsBadRequest() {
+        createAccount(aDefaultAccount());
+        ResponseEntity<List<RestError>> accountExpectingError = createAccountExpectingError(aDefaultAccount());
+        assertEquals(HttpStatus.BAD_REQUEST, accountExpectingError.getStatusCode());
+        List<RestError> expectedErrors = newArrayList(RestError.builder().message("Resource already exists").build());
+        assertEquals(expectedErrors, accountExpectingError.getBody());
     }
 
     @Test
