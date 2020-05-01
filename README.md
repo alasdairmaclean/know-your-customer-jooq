@@ -30,7 +30,3 @@ gets larger component/unit tests will be required (e.g. repository tests, contro
 * Similarly, there's little logic in the controllers currently - if/when more complexity is added it may be worth creating a
 separate set of service classes. 
 * An in memory database (H2) is used for the purposes of the exercise.
-
-# TODOs
-
-* Add indexes for search (all fields are potentially searchable)
