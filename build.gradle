@@ -1,13 +1,27 @@
+
+buildscript {
+	repositories {
+		mavenCentral()
+	}
+
+	dependencies {
+		classpath 'com.h2database:h2:1.4.200'
+		classpath 'org.flywaydb:flyway-core:5.2.4'
+	}
+}
+
 plugins {
 	id 'org.springframework.boot' version '2.2.5.RELEASE'
 	id 'io.spring.dependency-management' version '1.0.9.RELEASE'
 	id 'java'
 	id "io.freefair.lombok" version "4.1.6"
+	id 'nu.studer.jooq' version '4.2'
 }
+
 
 group = 'uk.co.phoebus'
 version = '0.0.1-SNAPSHOT'
-sourceCompatibility = '8'
+sourceCompatibility = '11'
 
 repositories {
 	mavenCentral()
@@ -20,6 +34,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
+	implementation 'org.springframework.boot:spring-boot-starter-jooq'
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'commons-io:commons-io:2.4'
@@ -33,8 +48,48 @@ dependencies {
 		exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
 	}
     implementation 'junit:junit:4.12'
+
+	jooqRuntime 'com.h2database:h2:1.4.200'
+
 }
 
 test {
 	useJUnitPlatform()
 }
+
+
+import org.flywaydb.core.Flyway
+
+task generateJOOQ() {
+	doLast {
+		Flyway flyway = Flyway.configure()
+		.dataSource("jdbc:h2:file:${project.projectDir}/build/generator/${project.name}", "sa", null)
+		.locations("filesystem:${project.projectDir}/src/main/resources/flyway")
+		.load()
+		flyway.migrate();
+	}
+}
+
+jooq {
+	sample(sourceSets.main) {
+		jdbc {
+			driver = 'org.h2.Driver'
+			url = "jdbc:h2:file:${project.projectDir}/build/generator/${project.name}"
+			user = 'sa'
+			password = ''
+		}
+		generator {
+			name = 'org.jooq.codegen.DefaultGenerator'
+			database {
+				name = 'org.jooq.meta.h2.H2Database'
+				includes = '.*'
+				excludes = ''
+			}
+			target {
+				packageName = 'nu.studer.sample'
+			}
+		}
+	}
+}
+
+generateSampleJooqSchemaSource.dependsOn(generateJOOQ)

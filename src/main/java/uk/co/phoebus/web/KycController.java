@@ -24,8 +24,8 @@ import java.util.stream.Collectors;
 public class KycController {
 
     private CustomerRepository customerRepository;
-    private AccountRepository accountRepository;
     private CustomerAccountLinkRepository linkRepository;
+    private AccountRepository accountRepository;
 
     @PostMapping("/customers")
     public Customer createCustomer(@Valid @RequestBody Customer customer,

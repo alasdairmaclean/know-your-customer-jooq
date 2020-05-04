@@ -1,91 +1,81 @@
 package uk.co.phoebus.db;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.Lists;
+import nu.studer.sample.public_.tables.CustomerAccount;
+import nu.studer.sample.public_.tables.records.CustomerRecord;
+import org.jooq.DSLContext;
+import org.jooq.RecordMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import uk.co.phoebus.model.Customer;
 
-import javax.annotation.PostConstruct;
-import javax.sql.DataSource;
-import java.sql.Date;
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
 
+import static org.jooq.impl.DSL.condition;
 import static org.springframework.util.CollectionUtils.isEmpty;
 
 @Repository
 public class CustomerRepository {
 
-    public static final String SAVE_SQL = "INSERT INTO CUSTOMER (CUSTOMER_ID, DATE_OF_BIRTH, FORENAME, SURNAME) VALUES (:customerId, :dateOfBirth, :forename, :surname)";
-    public static final String SELECT_SQL = "SELECT c.CUSTOMER_ID, c.DATE_OF_BIRTH, c.FORENAME, c.SURNAME FROM CUSTOMER c";
+    public static final nu.studer.sample.public_.tables.Customer TABLE = nu.studer.sample.public_.tables.Customer.CUSTOMER;
+    public static final CustomerAccount JOIN_TABLE = CustomerAccount.CUSTOMER_ACCOUNT;
 
     @Autowired
-    private DataSource dataSource;
+    private DSLContext dsl;
 
-    private NamedParameterJdbcTemplate jdbcTemplate;
-
-    public Customer save(Customer customer) {
-        Map<String, Object> params = paramsMap(customer);
-        jdbcTemplate.update(SAVE_SQL, params);
-        return customer;
+    public Customer save(Customer account) {
+        dsl.insertInto(TABLE)
+                .set(toDb(account))
+                .execute();
+        return account;
     }
 
     public Optional<Customer> findById(String customerId) {
-        List<Customer> results = findByExample(Customer.builder().customerId(customerId).build());
-        return results.stream().findFirst();
+        List<Customer> map = dsl.selectFrom(TABLE)
+                .where(TABLE.CUSTOMER_ID.eq(customerId))
+                .fetch()
+                .map(fromDb());
+        return map.stream().findFirst();
     }
 
     public List<Customer> findByExample(Customer searchModel) {
-        Map<String, Object> params = paramsMap(searchModel);
-        List<String> predicates = Lists.newArrayList();
-        String optionalJoin = "";
-        if (params.get("customerId") != null) {
-            predicates.add("CUSTOMER_ID = :customerId");
+        if (isEmpty(searchModel.getAccountIds())) {
+            return dsl
+                    .select()
+                    .from(TABLE)
+                    .where(condition(toDb(searchModel)))
+                    .fetch()
+                    .map(a -> fromDb().map(a.into(TABLE)));
         }
-        if (params.get("dateOfBirth") != null) {
-            predicates.add("DATE_OF_BIRTH = :dateOfBirth");
-        }
-        if (params.get("forename") != null) {
-            predicates.add("FORENAME = :forename");
-        }
-        if (params.get("surname") != null) {
-            predicates.add("SURNAME = :surname");
-        }
-        if (params.get("accountIds") != null) {
-            optionalJoin = " INNER JOIN CUSTOMER_ACCOUNT ca ON c.CUSTOMER_ID = ca.CUSTOMER_ID";
-            predicates.add("ca.ACCOUNT_ID IN (:accountIds)");
-        }
-
-        String sql = SELECT_SQL + optionalJoin + " WHERE " + Joiner.on(" AND ").join(predicates);
-        return jdbcTemplate.query(sql, params, ROW_MAPPER);
+        return dsl
+                .select()
+                .from(TABLE.join(JOIN_TABLE).on(TABLE.CUSTOMER_ID.eq(JOIN_TABLE.CUSTOMER_ID)))
+                .where(JOIN_TABLE.ACCOUNT_ID.in(searchModel.getAccountIds()))
+                .and(condition(toDb(searchModel)))
+                .fetch()
+                .map(a -> fromDb().map(a.into(TABLE)));
     }
 
     public void deleteAll() {
-        jdbcTemplate.update("DELETE FROM CUSTOMER", Collections.emptyMap());
+        dsl.deleteFrom(TABLE).execute();
     }
 
-    private Map<String, Object> paramsMap(Customer customer) {
-        Map<String, Object> params = new HashMap<>();
-        params.put("customerId", customer.getCustomerId());
-        params.put("dateOfBirth", customer.getDateOfBirth() == null ? null : Date.valueOf(customer.getDateOfBirth()));
-        params.put("forename", customer.getForename());
-        params.put("surname", customer.getSurname());
-        params.put("accountIds", isEmpty(customer.getAccountIds()) ? null : customer.getAccountIds());
-        return params;
+    private RecordMapper<CustomerRecord, Customer> fromDb() {
+        return c -> Customer.builder()
+                .customerId(c.getCustomerId())
+                .dateOfBirth(c.getDateOfBirth())
+                .forename(c.getForename())
+                .surname(c.getSurname())
+                .build();
     }
 
-    @PostConstruct
-    public void initTemplate() {
-        jdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
+    private CustomerRecord toDb(Customer customer) {
+        CustomerRecord c = new CustomerRecord();
+        c.setCustomerId(customer.getCustomerId());
+        c.setDateOfBirth(customer.getDateOfBirth());
+        c.setForename(customer.getForename());
+        c.setSurname(customer.getSurname());
+        return c;
     }
-
-    public static final RowMapper<Customer> ROW_MAPPER = (rs, rowNum) -> Customer.builder()
-            .customerId(rs.getString("CUSTOMER_ID"))
-            .forename(rs.getString("FORENAME"))
-            .surname(rs.getString("SURNAME"))
-            .dateOfBirth(rs.getDate("DATE_OF_BIRTH").toLocalDate())
-            .build();
 
 }
