@@ -40,6 +40,7 @@ dependencies {
 	implementation 'commons-io:commons-io:2.4'
 	implementation 'io.springfox:springfox-swagger2:2.9.2'
 	implementation 'io.springfox:springfox-swagger-ui:2.9.2'
+	implementation 'org.flywaydb:flyway-core:5.2.4'
 
 	runtimeOnly 'com.h2database:h2:1.4.200'
 	compileOnly 'org.projectlombok:lombok:1.18.12'
@@ -47,7 +48,8 @@ dependencies {
 	testImplementation('org.springframework.boot:spring-boot-starter-test') {
 		exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
 	}
-    implementation 'junit:junit:4.12'
+    testImplementation 'junit:junit:4.12'
+
 
 	jooqRuntime 'com.h2database:h2:1.4.200'
 
@@ -57,14 +59,16 @@ test {
 	useJUnitPlatform()
 }
 
+def uuid = UUID.randomUUID().toString()
+def jdbcUrl = "jdbc:h2:file:${project.projectDir}/build/generator/${project.name}-${uuid}"
 
 import org.flywaydb.core.Flyway
 
 task generateJOOQ() {
 	doLast {
 		Flyway flyway = Flyway.configure()
-		.dataSource("jdbc:h2:file:${project.projectDir}/build/generator/${project.name}", "sa", null)
-		.locations("filesystem:${project.projectDir}/src/main/resources/flyway")
+		.dataSource(jdbcUrl, "sa", null)
+		.locations("filesystem:${project.projectDir}/src/main/resources/db/migration")
 		.load()
 		flyway.migrate();
 	}
@@ -74,7 +78,7 @@ jooq {
 	sample(sourceSets.main) {
 		jdbc {
 			driver = 'org.h2.Driver'
-			url = "jdbc:h2:file:${project.projectDir}/build/generator/${project.name}"
+			url = jdbcUrl
 			user = 'sa'
 			password = ''
 		}
